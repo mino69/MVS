@@ -64,7 +64,7 @@ local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 -- Configuration
 local Config = {
 	AuraEnabled = false,
-	AutoEquip = true, 
+	AutoEquip = true,
 	AutoQueueEnabled = false,
 	SpinbotEnabled = false,
 	LeechEnabled = false,
@@ -251,7 +251,7 @@ local function findBestPad()
 	local isMatchStarting = false
 
 	for _, ringFolder in ipairs(ringsGroup:GetChildren()) do
-		local totalOccupants = 0
+		local ringOtherOccupants = 0
 		local totalCapacity = 0
 		local amIInThisRing = false
 		local potentialPad = nil
@@ -269,7 +269,8 @@ local function findBestPad()
 		for _, m in ipairs(ringFolder:GetChildren()) do
 			if m:IsA("Model") and m.Name == "DuelPad" then
 				local occ, cap, amIHere = getPadStats(m)
-				totalOccupants = totalOccupants + occ + (amIHere and 1 or 0)
+				-- 'occ' is strictly the number of OTHER players
+				ringOtherOccupants = ringOtherOccupants + occ
 				totalCapacity = totalCapacity + cap
 				
 				if amIHere then 
@@ -282,16 +283,15 @@ local function findBestPad()
 			end
 		end
 
-		-- Only calculate scores for rings we are in OR rings that still have room
 		if potentialPad or amIInThisRing then
-			local missingPlayers = totalCapacity - totalOccupants
+			-- THE MAGIC FORMULA:
+			-- If I take a spot, how many MORE players do we need to wait for?
+			local playersToWaitFor = totalCapacity - ringOtherOccupants - 1
+			if playersToWaitFor < 0 then playersToWaitFor = 0 end
 			
-			-- Score Logic:
-			-- 1. Prioritize rings that need the FEWEST missing players (1 missing player = -1000)
-			-- 2. Tiebreaker: Prioritize smaller capacity rings (e.g., 1v1 over 3v3)
-			local score = 10000 - (missingPlayers * 1000) - totalCapacity
+			-- The fewer players we have to wait for, the massively higher the score.
+			local score = 10000 - (playersToWaitFor * 1000) - totalCapacity
 			
-			-- HUGE boost if the match is physically about to start
 			if hasActiveCountdown then 
 				score = score + 5000 
 			end
@@ -360,7 +360,7 @@ end)
 AutoQueueBtn.MouseButton1Click:Connect(function()
 	Config.AutoQueueEnabled = not Config.AutoQueueEnabled
 	Config.CurrentlyInMatch = false 
-	AutoQueueBtn.Text = "AUTO-QUEUE: " .. (Config.AutoQueueEnabled and "ON" or "OFF")
+	AutoQueueBtn.Text = "AUTO-QUEUE (beta): " .. (Config.AutoQueueEnabled and "ON" or "OFF")
 	AutoQueueBtn.TextColor3 = Config.AutoQueueEnabled and Color3.fromRGB(255, 100, 0) or Color3.fromRGB(200, 200, 200)
 end)
 
