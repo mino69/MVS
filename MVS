@@ -158,7 +158,7 @@ end
 
 local ToggleBtn = createButton("Toggle", "AURA: DISABLED", UDim2.new(0.5, -90, 0, 10), Content)
 local AutoEquipBtn = createButton("AutoEquip", "AUTO-EQUIP: ON", UDim2.new(0.5, -90, 0, 50), Content)
-local AutoQueueBtn = createButton("AutoQueue", "AUTO-QUEUE: OFF", UDim2.new(0.5, -90, 0, 90), Content)
+local AutoQueueBtn = createButton("AutoQueue", "AUTO-QUEUE (beta): OFF", UDim2.new(0.5, -90, 0, 90), Content)
 local SpinbotBtn = createButton("Spinbot", "SPINBOT: OFF", UDim2.new(0.5, -90, 0, 130), Content)
 local PlayerSelectBtn = createButton("PlayerSelect", "SELECT PLAYER", UDim2.new(0.5, -90, 0, 170), Content)
 local LeechToggleBtn = createButton("LeechToggle", "LEECH: OFF", UDim2.new(0.5, -90, 0, 210), Content)
