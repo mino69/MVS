@@ -75,7 +75,7 @@ local Config = {
 	LobbyCenter = Vector3.new(56.486, -114.503, 37.230),
 	LobbyThreshold = 120,
 	CurrentlyInMatch = false,
-	Stickiness = 500, -- LOWERED for smarter, faster queue jumping
+	Stickiness = 300, -- Reduced to allow jumping to better games more easily
 	TeleportCooldown = 0.5
 }
 
@@ -289,11 +289,12 @@ local function findBestPad()
 			local playersToWaitFor = totalCapacity - ringOtherOccupants - 1
 			if playersToWaitFor < 0 then playersToWaitFor = 0 end
 			
-			-- The fewer players we have to wait for, the massively higher the score.
-			local score = 10000 - (playersToWaitFor * 1000) - totalCapacity
+			-- Priority 1: Minimize playersToWaitFor (get into matches that start soonest)
+			-- Priority 2: Maximize ringOtherOccupants (prefer larger games like 3v3/4v4)
+			local score = 20000 - (playersToWaitFor * 2000) + (ringOtherOccupants * 600)
 			
 			if hasActiveCountdown then 
-				score = score + 5000 
+				score = score + 10000 
 			end
 			
 			if amIInThisRing then
