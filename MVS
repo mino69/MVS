@@ -64,7 +64,7 @@ local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 -- Configuration
 local Config = {
 	AuraEnabled = false,
-	AutoEquip = true, -- FIXED: Set to true by default
+	AutoEquip = true, 
 	AutoQueueEnabled = false,
 	SpinbotEnabled = false,
 	LeechEnabled = false,
@@ -75,7 +75,7 @@ local Config = {
 	LobbyCenter = Vector3.new(56.486, -114.503, 37.230),
 	LobbyThreshold = 120,
 	CurrentlyInMatch = false,
-	Stickiness = 1200, 
+	Stickiness = 500, -- LOWERED for smarter, faster queue jumping
 	TeleportCooldown = 0.5
 }
 
@@ -163,7 +163,6 @@ local SpinbotBtn = createButton("Spinbot", "SPINBOT: OFF", UDim2.new(0.5, -90, 0
 local PlayerSelectBtn = createButton("PlayerSelect", "SELECT PLAYER", UDim2.new(0.5, -90, 0, 170), Content)
 local LeechToggleBtn = createButton("LeechToggle", "LEECH: OFF", UDim2.new(0.5, -90, 0, 210), Content)
 
--- FIXED: Set the initial color for AutoEquip since it is ON by default
 AutoEquipBtn.TextColor3 = Color3.fromRGB(0, 200, 255)
 
 Status.Parent = Content
@@ -245,14 +244,15 @@ local function findBestPad()
 	local lobby = workspace:FindFirstChild("Lobby")
 	local ringsGroup = lobby and lobby:FindFirstChild("DuelRingsGroup")
 	if not ringsGroup then return nil end
+	
 	local bestPadTarget = nil
-	local bestScore = -1
-	local currentRingScore = -1
+	local bestScore = -10000
+	local currentRingScore = -10000
 	local isMatchStarting = false
 
 	for _, ringFolder in ipairs(ringsGroup:GetChildren()) do
-		local ringTotalOthers = 0
-		local ringMaxCap = 0
+		local totalOccupants = 0
+		local totalCapacity = 0
 		local amIInThisRing = false
 		local potentialPad = nil
 		local hasActiveCountdown = false
@@ -261,33 +261,61 @@ local function findBestPad()
 		local label = vsText and vsText:FindFirstChild("Number", true)
 		if label then
 			local countdownVal = tonumber(label.Text)
-			if countdownVal and (countdownVal > 0 or label.Text == "0") then hasActiveCountdown = true end
+			if countdownVal and (countdownVal > 0 or label.Text == "0") then 
+				hasActiveCountdown = true 
+			end
 		end
 
 		for _, m in ipairs(ringFolder:GetChildren()) do
 			if m:IsA("Model") and m.Name == "DuelPad" then
 				local occ, cap, amIHere = getPadStats(m)
-				ringMaxCap = math.max(ringMaxCap, cap)
-				if amIHere then amIInThisRing = true else ringTotalOthers = ringTotalOthers + occ end
-				if not potentialPad and occ < cap then potentialPad = m:FindFirstChild("Pad") end
+				totalOccupants = totalOccupants + occ + (amIHere and 1 or 0)
+				totalCapacity = totalCapacity + cap
+				
+				if amIHere then 
+					amIInThisRing = true 
+				end
+				
+				if not potentialPad and occ < cap then 
+					potentialPad = m:FindFirstChild("Pad") 
+				end
 			end
 		end
 
-		local score = (ringTotalOthers * 1000) + (100 - ringMaxCap)
-		if hasActiveCountdown then score = score + 5000 end
-		if amIInThisRing then
-			currentRingScore = score
-			if label and label.Text == "0" then isMatchStarting = true end
-		end
-		if score > bestScore and potentialPad then
-			bestScore = score
-			bestPadTarget = potentialPad
+		-- Only calculate scores for rings we are in OR rings that still have room
+		if potentialPad or amIInThisRing then
+			local missingPlayers = totalCapacity - totalOccupants
+			
+			-- Score Logic:
+			-- 1. Prioritize rings that need the FEWEST missing players (1 missing player = -1000)
+			-- 2. Tiebreaker: Prioritize smaller capacity rings (e.g., 1v1 over 3v3)
+			local score = 10000 - (missingPlayers * 1000) - totalCapacity
+			
+			-- HUGE boost if the match is physically about to start
+			if hasActiveCountdown then 
+				score = score + 5000 
+			end
+			
+			if amIInThisRing then
+				currentRingScore = score
+				if label and label.Text == "0" then 
+					isMatchStarting = true 
+				end
+			end
+			
+			if score > bestScore and potentialPad then
+				bestScore = score
+				bestPadTarget = potentialPad
+			end
 		end
 	end
 
-	local effectiveCurrent = (currentRingScore > -1) and (currentRingScore + Config.Stickiness) or -1
-	if bestScore > effectiveCurrent and bestPadTarget then return bestPadTarget, nil, isMatchStarting end
-	return nil, nil, isStarting
+	local effectiveCurrent = (currentRingScore > -10000) and (currentRingScore + Config.Stickiness) or -10000
+	if bestScore > effectiveCurrent and bestPadTarget then 
+		return bestPadTarget, nil, isMatchStarting 
+	end
+	
+	return nil, nil, isMatchStarting
 end
 
 -- [[ INTERFACE LOGIC ]] --
@@ -394,7 +422,11 @@ task.spawn(function()
 
 			if not Config.CurrentlyInMatch then
 				local targetPad, _, isStarting = findBestPad()
-				if isStarting then Config.CurrentlyInMatch = true elseif targetPad then teleport(targetPad.Position) end
+				if isStarting then 
+					Config.CurrentlyInMatch = true 
+				elseif targetPad then 
+					teleport(targetPad.Position) 
+				end
 			end
 		end
 		task.wait(0.4)
@@ -428,10 +460,8 @@ end)
 UIS.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
 
 UIS.InputBegan:Connect(function(input, gpe)
-	-- Changed from RightShift to Delete
 	if not gpe and input.KeyCode == Enum.KeyCode.Delete then
 		Main.Visible = not Main.Visible
 		PlayerListFrame.Visible = false
 	end
 end)
-
